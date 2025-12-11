@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>智慧会计助手</title>
+		<style>
+			body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+        h1 { text-align: center; color: #2d3748; }
+        .subtitle { text-align: center; color: #718096; margin-bottom: 15px; }
+        .api-config { background-color: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .api-config label { font-weight: bold; }
+        .api-config input { padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 6px; width: 260px; }
+        .api-config button { padding: 10px 16px; background-color: #4299e1; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        #chat-container { border: 1px solid #e2e8f0; padding: 20px; height: 500px; overflow-y: auto; margin-bottom: 20px; border-radius: 12px; background-color: #ffffff; }
+        .message-container { display: flex; margin-bottom: 20px; align-items: flex-start; }
+        .user-message-container { justify-content: flex-end; }
+        .message-wrapper { max-width: 85%; }
+        .user-message { background-color: #4299e1; color: white; padding: 12px 16px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+        .assistant-message { background-color: #ffffff; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        /* 整合的文件上传区域样式 */
+        #input-container { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        #file-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #edf2f7;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e0;
+        }
+        #file-input { display: none; }
+        #file-label { 
+            padding: 8px 12px; 
+            background-color: #e2e8f0; 
+            color: #2d3748; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        #file-label:hover { background-color: #cbd5e0; }
+        #file-name { 
+            font-size: 0.9em; 
+            color: #4a5568; 
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #clear-file-btn {
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 2px;
+            margin-left: 4px;
+        }
+        #clear-file-btn:hover {
+            color: #e53e3e;
+        }
+        #user-input { 
+            flex: 1; 
+            padding: 12px; 
+            font-size: 16px; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            min-width: 200px;
+        }
+        #submit-btn { 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            background-color: #4299e1; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            min-width: 100px;
+        }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .user-avatar { background-color: #ebf8ff; color: #4299e1; margin-left: 12px; }
+        .assistant-avatar { background-color: #f0fff4; color: #48bb78; margin-right: 12px; }
+        .clear-btn { display: block; margin: 10px auto 20px; padding: 8px 16px; background-color: #e53e3e; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .error-message { background-color: #fff5f5; border: 1px solid #fed7d7; color: #e53e3e; padding: 12px; border-radius: 8px; margin-top: 10px; }
+        .api-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; }
+        .status-connected { background-color: #48bb78; }
+        .status-disconnected { background-color: #e53e3e; }
+        .config-status { font-size: 0.85em; margin-top: 8px; text-align: center; color: #4a5568; }
+        .file-info {
+            font-size: 0.85em;
+            color: #718096;
+            margin-top: 5px;
+            padding: 0 10px;
+            text-align: center;
+        }
+        /* 流式传输指示器样式 */
+        .stream-indicator {
+            display: none;
+            font-size: 0.9em;
+            color: #3182ce;
+            margin-top: 5px;
+        }
+        .button-status-container {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+	</head>
+	<body>
+		<h1>智慧会计助手</h1>
+		<div class="subtitle">智慧会计助手 · XX资本集团</div>
+		<div class="api-config">
+			<label for="api-url">API 地址:</label>
+			<input type="text" id="api-url" placeholder="http://192.168.1.102:5001">
+			<label for="api-key">API 密钥:</label>
+			<input type="password" id="api-key" placeholder="输入您的密钥">
+
+			<div class="button-status-container">
+				<button id="save-api-btn">保存并测试连接</button>
+				<div class="config-status">当前配置: <span id="current-config">未配置</span></div>
+			</div>
+		</div>
+		<div id="chat-container"></div>
+		<button id="clear-btn" class="clear-btn">清除对话</button>
+
+		<div class="file-info">
+			(支持上传TXT文件作为上下文，文件内容将作为问题的一部分发送)
+		</div>
+
+		<div id="input-container">
+			<div id="file-container">
+				<input type="file" id="file-input" accept=".txt">
+				<label for="file-input" id="file-label">选择文件</label>
+				<span id="file-name">未选择</span>
+				<button id="clear-file-btn" title="清除文件">×</button>
+			</div>
+			<input type="text" id="user-input" placeholder="输入你的问题 (可先上传文件作为上下文)...">
+			<button id="submit-btn">发送</button>
+		</div>
+
+		<div class="system-info">
+			<div class="api-status">
+				<span>API 状态:</span>
+				<span id="api-status-indicator" class="status-indicator status-disconnected"></span>
+				<span id="api-status-text">未连接</span>
+			</div>
+		</div>
+
+		<script>
+			const chatContainer = document.getElementById('chat-container');
+			const userInput = document.getElementById('user-input');
+			const submitBtn = document.getElementById('submit-btn');
+			const clearBtn = document.getElementById('clear-btn');
+			const apiStatusIndicator = document.getElementById('api-status-indicator');
+			const apiStatusText = document.getElementById('api-status-text');
+			const apiUrlInput = document.getElementById('api-url');
+			const apiKeyInput = document.getElementById('api-key');
+			const saveApiBtn = document.getElementById('save-api-btn');
+			const currentConfigSpan = document.getElementById('current-config');
+			const fileInput = document.getElementById('file-input');
+			const fileLabel = document.getElementById('file-label');
+			const fileNameSpan = document.getElementById('file-name');
+			const clearFileBtn = document.getElementById('clear-file-btn');
+			let selectedFileContent = '';
+			let API_BASE_URL = '';
+			let API_KEY = '';
+			let isGenerating = false;
+			let currentAssistantMessageEl = null;
+			let streamIndicator = null;
+			let streamAbortController = null;
+
+			// 文件处理函数
+			function resetFileState() {
+				fileInput.value = '';
+				fileNameSpan.textContent = '未选择';
+				selectedFileContent = '';
+			}
+
+			function loadFile(file) {
+				if (!file) {
+					resetFileState();
+					return;
+				}
+
+				if (file.type !== 'text/plain') {
+					showError('请选择一个 .txt 文件。');
+					resetFileState();
+					return;
+				}
+
+				fileNameSpan.textContent = file.name;
+
+				const reader = new FileReader();
+				reader.onload = function(e) {
+					selectedFileContent = e.target.result;
+				};
+				reader.onerror = function() {
+					showError('读取文件时发生错误。');
+					resetFileState();
+				};
+				reader.readAsText(file, 'UTF-8');
+			}
+
+			// 加密/解密函数
+			const encoder = new TextEncoder();
+			const decoder = new TextDecoder();
+
+			function xorCipherBytes(textBytes, key) {
+				const keyBytes = encoder.encode(key);
+				const resultBytes = new Uint8Array(textBytes.length);
+				for (let i = 0; i < textBytes.length; i++) {
+					resultBytes[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];
+				}
+				return resultBytes;
+			}
+
+			function uint8ArrayToBase64(bytes) {
+				return new Promise((resolve, reject) => {
+					const blob = new Blob([bytes], {
+						type: 'application/octet-binary'
+					});
+					const reader = new FileReader();
+					reader.onload = () => {
+						const dataUrl = reader.result;
+						const base64 = dataUrl.split(',')[1];
+						resolve(base64);
+					};
+					reader.onerror = () => reject(reader.error);
+					reader.readAsDataURL(blob);
+				});
+			}
+
+			function base64ToUint8Array(base64) {
+				const binaryString = atob(base64);
+				const bytes = new Uint8Array(binaryString.length);
+				for (let i = 0; i < binaryString.length; i++) {
+					bytes[i] = binaryString.charCodeAt(i);
+				}
+				return bytes;
+			}
+
+			async function encryptPayload(data, key) {
+				if (!key) throw new Error("缺少加密密钥。");
+				const plaintext = JSON.stringify(data);
+				const textBytes = encoder.encode(plaintext);
+				const encryptedBytes = xorCipherBytes(textBytes, key);
+				const base64String = await uint8ArrayToBase64(encryptedBytes);
+				return base64String;
+			}
+
+			function decryptPayload(encryptedPayload, key) {
+				if (!key) throw new Error("缺少解密密钥。");
+				const encryptedBytes = base64ToUint8Array(encryptedPayload);
+				const decryptedBytes = xorCipherBytes(encryptedBytes, key);
+				const decryptedJson = decoder.decode(decryptedBytes);
+				return JSON.parse(decryptedJson);
+			}
+
+			// 消息处理函数
+			function addMessage(text, isUser = false) {
+				const container = document.createElement('div');
+				container.className = `message-container ${isUser ? 'user-message-container' : 'assistant-message-container'}`;
+
+				const avatar = document.createElement('div');
+				avatar.className = `avatar ${isUser ? 'user-avatar' : 'assistant-avatar'}`;
+				avatar.textContent = isUser ? 'U' : 'AI';
+
+				const wrapper = document.createElement('div');
+				wrapper.className = 'message-wrapper';
+
+				const messageDiv = document.createElement('div');
+				messageDiv.className = isUser ? 'user-message' : 'assistant-message';
+				const sanitizedText = text.replace(/</g, "<").replace(/>/g, ">");
+				messageDiv.innerHTML = sanitizedText;
+
+				wrapper.appendChild(messageDiv);
+
+				if (isUser) {
+					container.appendChild(wrapper);
+					container.appendChild(avatar);
+				} else {
+					container.appendChild(avatar);
+					container.appendChild(wrapper);
+				}
+
+				chatContainer.appendChild(container);
+				chatContainer.scrollTop = chatContainer.scrollHeight;
+				return messageDiv;
+			}
+
+			function showError(message) {
+				const errorDiv = document.createElement('div');
+				errorDiv.className = 'error-message';
+				errorDiv.textContent = `错误: ${message}`;
+				chatContainer.appendChild(errorDiv);
+				chatContainer.scrollTop = chatContainer.scrollHeight;
+			}
+
+			function createStreamIndicator() {
+				streamIndicator = document.createElement('div');
+				streamIndicator.className = 'stream-indicator';
+				return streamIndicator;
+			}
+
+			function updateAssistantMessage(newToken) {
+				if (currentAssistantMessageEl) {
+					const currentText = currentAssistantMessageEl.textContent || "";
+					const sanitizedToken = newToken.replace(/</g, "<").replace(/>/g, ">");
+					currentAssistantMessageEl.textContent = currentText + sanitizedToken;
+					chatContainer.scrollTop = chatContainer.scrollHeight;
+				}
+			}
+
+			function finishStreaming() {
+				if (streamIndicator) {
+					streamIndicator.style.display = 'none';
+					streamIndicator = null;
+				}
+				currentAssistantMessageEl = null;
+				isGenerating = false;
+				submitBtn.disabled = false;
+				userInput.focus();
+				chatContainer.scrollTop = chatContainer.scrollHeight;
+			}
+
+			// 核心消息处理
+			async function processMessage(message) {
+				if (!message || isGenerating) return;
+				if (!API_BASE_URL || !API_KEY) {
+					showError('请先配置API地址和密钥。');
+					return;
+				}
+
+				isGenerating = true;
+				submitBtn.disabled = true;
+				userInput.value = '';
+
+				addMessage(message, true);
+				currentAssistantMessageEl = addMessage('', false);
+				const indicator = createStreamIndicator();
+				currentAssistantMessageEl.parentNode.parentNode.appendChild(indicator);
+				indicator.style.display = 'block';
+
+				try {
+					const requestData = {
+						text: message,
+						max_tokens: 2000, // 略微降低但保持在安全范围
+						temperature: 0.1, // 增加创造性避免机械式输出
+						top_p: 0.35, // 保持足够多样性
+						repetition_penalty: 1.15, // 适度抑制重复
+						min_tokens: 100, // 新增：确保最少输出长度
+						eos_token_id: [13, 50256], // 新增：明确结束标记
+						num_beams: 3, // 新增：使用束搜索提高连贯性
+						early_stopping: true, // 新增：自动检测自然结束点
+						length_penalty: 0.1 // 新增：惩罚过长输出
+					};
+
+					const encryptedPayload = await encryptPayload(requestData, API_KEY);
+					const body = JSON.stringify({
+						payload: encryptedPayload
+					});
+
+					streamAbortController = new AbortController();
+					const signal = streamAbortController.signal;
+
+					const response = await fetch(`${API_BASE_URL}/stream`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-API-Key': API_KEY
+						},
+						body: body,
+						signal: signal
+					});
+
+					if (!response.ok) {
+						const errorText = await response.text();
+						let errorMsg = `服务器错误: ${response.status} ${response.statusText}`;
+						try {
+							const errorJson = JSON.parse(errorText);
+							errorMsg = `服务器错误: ${errorJson.detail || errorMsg}`;
+						} catch (e) {
+							errorMsg = `服务器错误: ${errorText}`;
+						}
+						throw new Error(errorMsg);
+					}
+
+					if (!response.body) {
+						throw new Error("响应中没有可读取的流。");
+					}
+
+					const reader = response.body.getReader();
+					const streamDecoder = new TextDecoder();
+					let buffer = '';
+
+					try {
+						while (true) {
+							const {
+								done,
+								value
+							} = await reader.read();
+							if (done) break;
+
+							buffer += streamDecoder.decode(value, {
+								stream: true
+							});
+							const lines = buffer.split(/\r?\n/);
+							buffer = lines.pop();
+
+							for (const line of lines) {
+								if (line.startsWith(' ')) {
+									try {
+										const jsonString = line.substring(1).trim();
+										const eventData = JSON.parse(jsonString);
+										if (eventData.payload) {
+											const decryptedData = decryptPayload(eventData.payload, API_KEY);
+											if (decryptedData.token) {
+												updateAssistantMessage(decryptedData.token);
+											}
+										}
+									} catch (parseError) {
+										console.error("解析SSE事件时出错:", parseError, "原始行:", line);
+									}
+								}
+							}
+						}
+					} catch (readError) {
+						if (readError.name === 'AbortError') {
+							currentAssistantMessageEl.textContent += "\n\n[请求已取消]";
+						} else {
+							throw readError;
+						}
+					} finally {
+						reader.releaseLock();
+					}
+				} catch (error) {
+					console.error('请求或流处理错误:', error);
+					let errorText = error.message;
+					if (error.message.includes("401")) {
+						errorText = "API密钥无效，请重新配置。";
+					}
+					if (currentAssistantMessageEl) {
+						currentAssistantMessageEl.textContent = `[错误] ${errorText}`;
+						currentAssistantMessageEl.style.color = 'red';
+					} else {
+						showError(errorText);
+					}
+				} finally {
+					finishStreaming();
+					streamAbortController = null;
+				}
+			}
+
+async function sendMessage() {
+    const question = userInput.value.trim();
+    if (!question && !selectedFileContent) {
+        showError('请输入问题或上传文件。');
+        return;
+    }
+
+    let baseMessage = question;
+    if (selectedFileContent) {
+        baseMessage = `请根据以下文件内容回答问题：
+[文件内容开始]
+${selectedFileContent}
+[文件内容结束]
+问题：${question}`;
+    }
+    
+    // 在这里添加优化提示指令
+    const optimizedMessage = `${baseMessage}
+请用简洁的会计专业术语回答，控制在3-5句话内。
+回答只需要包含以下要素：
+1. 核心结论
+2. 最终建议`;
+    
+    await processMessage(optimizedMessage);
+    resetFileState();
+}
+			// API 状态处理
+			function loadApiConfig() {
+				const savedUrl = localStorage.getItem('api_base_url');
+				const savedKey = localStorage.getItem('api_key');
+				if (savedUrl) {
+					API_BASE_URL = savedUrl;
+					apiUrlInput.value = savedUrl;
+				}
+				if (savedKey) {
+					API_KEY = savedKey;
+					apiKeyInput.value = savedKey;
+				}
+				if (savedUrl) {
+					currentConfigSpan.textContent = `URL: ${API_BASE_URL} | 密钥: ${savedKey ? '已配置' : '未配置'}`;
+					return true;
+				}
+				currentConfigSpan.textContent = '未配置';
+				return false;
+			}
+
+			function saveApiConfig(url, key) {
+				API_BASE_URL = url;
+				API_KEY = key;
+				localStorage.setItem('api_base_url', url);
+				localStorage.setItem('api_key', key);
+				currentConfigSpan.textContent = `URL: ${url} | 密钥: ${key ? '已配置' : '未配置'}`;
+			}
+
+			function updateApiStatus(status, message) {
+				apiStatusIndicator.className = 'status-indicator';
+				if (status === 'connected') {
+					apiStatusIndicator.classList.add('status-connected');
+					apiStatusText.textContent = message || '已连接';
+				} else {
+					apiStatusIndicator.classList.add('status-disconnected');
+					apiStatusText.textContent = message || '未连接';
+				}
+			}
+
+			async function checkBaseApiStatus() {
+				if (!API_BASE_URL) {
+					updateApiStatus('disconnected');
+					return;
+				}
+				try {
+					const response = await fetch(`${API_BASE_URL}/health`);
+					if (response.ok) {
+						updateApiStatus('connected', '服务可用');
+					} else {
+						updateApiStatus('disconnected', '服务不可达');
+					}
+				} catch (error) {
+					updateApiStatus('disconnected', '连接失败');
+				}
+			}
+
+			async function testApiConnection() {
+				const url = apiUrlInput.value.trim();
+				const key = apiKeyInput.value.trim();
+				if (!url || !key) {
+					showError('请输入API地址和API密钥。');
+					return;
+				}
+				saveApiConfig(url, key);
+				try {
+					const response = await fetch(`${url}/secure-health`, {
+						method: 'POST',
+						headers: {
+							'X-API-Key': key
+						}
+					});
+					if (response.ok) {
+						addMessage("API连接和密钥验证成功！", false);
+						updateApiStatus('connected', '密钥已验证');
+					} else {
+						const error = await response.json();
+						showError(`服务器连接失败: ${error.detail || response.statusText}`);
+						updateApiStatus('disconnected', `密钥无效: ${response.status}`);
+					}
+				} catch (error) {
+					showError('API连接测试失败。请检查地址或服务状态。');
+					updateApiStatus('disconnected', '连接失败');
+				}
+			}
+
+			// 初始化
+			window.onload = function() {
+				addMessage("您好！我是智慧会计助手。请先配置您的API地址和密钥再开始对话。您也可以上传TXT文件作为问题上下文。", false);
+				if (loadApiConfig()) {
+					checkBaseApiStatus();
+				}
+			};
+
+			// 事件监听器
+			clearBtn.addEventListener('click', () => {
+				if (!isGenerating) {
+					if (streamAbortController) {
+						streamAbortController.abort();
+						streamAbortController = null;
+					}
+					chatContainer.innerHTML = '';
+					addMessage("对话已清除。有什么新问题吗？", false);
+					resetFileState();
+					currentAssistantMessageEl = null;
+					streamIndicator = null;
+				}
+			});
+
+			saveApiBtn.addEventListener('click', testApiConnection);
+			submitBtn.addEventListener('click', sendMessage);
+			userInput.addEventListener('keypress', (e) => {
+				if (e.key === 'Enter') sendMessage();
+			});
+
+			fileInput.addEventListener('change', function() {
+				const file = this.files[0];
+				loadFile(file);
+			});
+
+			clearFileBtn.addEventListener('click', resetFileState);
+			userInput.focus();
+		</script>
+	</body>
+</html>

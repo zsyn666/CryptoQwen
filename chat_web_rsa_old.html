@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>智慧会计助手 - 安全聊天界面</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; color: #333; }
+        h1 { text-align: center; color: #2d3748; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #718096; font-size: 1.1em; margin-bottom: 15px; }
+        .api-config { background-color: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .config-row { display: flex; align-items: flex-start; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .api-config label { font-weight: bold; color: #2d3748; width: 100px; text-align: right; padding-top: 8px; }
+        .api-config input, .api-config textarea { padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 6px; flex-grow: 1; font-size: 14px; font-family: monospace; }
+        .api-config textarea { min-height: 100px; resize: vertical; }
+        .api-config button { padding: 10px 16px; background-color: #4299e1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color 0.3s; margin-left: 115px; }
+        .api-config button:hover { background-color: #3182ce; }
+        #chat-container { border: 1px solid #e2e8f0; padding: 20px; height: 500px; overflow-y: auto; margin-bottom: 20px; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+        .message-container { display: flex; margin-bottom: 20px; align-items: flex-start; }
+        .user-message-container { justify-content: flex-end; }
+        .assistant-message-container { justify-content: flex-start; }
+        .message-wrapper { max-width: 85%; }
+        .user-message { background-color: #4299e1; color: white; padding: 12px 16px; border-radius: 12px; border-top-right-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); white-space: pre-wrap; word-wrap: break-word; }
+        .assistant-message { background-color: #ffffff; padding: 12px 16px; border-radius: 12px; border-top-left-radius: 4px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+        .thinking-block { background-color: #f7fafc; border: 1px dashed #e2e8f0; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9em; color: #718096; font-style: italic; white-space: pre-wrap; word-wrap: break-word; }
+        .thinking-block:before { content: "Thinking..."; font-weight: bold; display: block; margin-bottom: 4px; color: #4a5568; }
+        .response-block { white-space: pre-wrap; word-wrap: break-word; }
+        .message-timestamp { font-size: 0.75em; color: #a0aec0; margin-top: 5px; }
+        .user-message-container .message-timestamp { text-align: right; margin-right: 12px; }
+        .assistant-message-container .message-timestamp { text-align: left; margin-left: 12px; }
+        #input-container { display: flex; gap: 10px; margin-bottom: 10px; align-items: center;}
+        #user-input { flex: 1; padding: 14px; font-size: 16px; border: 1px solid #e2e8f0; border-radius: 8px; transition: border-color 0.3s; outline: none; }
+        #user-input:focus { border-color: #4299e1; box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2); }
+        #submit-btn, #upload-btn { padding: 12px 24px; font-size: 16px; background-color: #4299e1; color: white; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; white-space: nowrap;}
+        #submit-btn:hover, #upload-btn:hover { background-color: #3182ce; }
+        #submit-btn:disabled, #upload-btn:disabled { background-color: #cbd5e0; cursor: not-allowed; }
+        #file-input { display: none; }
+        #file-info { font-size: 0.85em; color: #4a5568; margin-bottom: 10px; text-align: center;}
+        #remove-file { color: #e53e3e; cursor: pointer; font-weight: bold; margin-left: 8px;}
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #718096; }
+        .user-avatar { background-color: #ebf8ff; color: #4299e1; margin-left: 12px; }
+        .assistant-avatar { background-color: #f0fff4; color: #48bb78; margin-right: 12px; }
+        .system-info { font-size: 0.9em; color: #718096; text-align: center; margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 8px; }
+        .clear-btn { display: block; margin: 10px auto 20px; padding: 8px 16px; background-color: #e53e3e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .error-message { background-color: #fff5f5; border: 1px solid #fed7d7; color: #e53e3e; padding: 12px; border-radius: 8px; margin-top: 10px; font-size: 0.9em; }
+        .api-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .status-connected { background-color: #48bb78; }
+        .status-disconnected { background-color: #e53e3e; }
+        .config-status { font-size: 0.85em; margin-top: 8px; text-align: center; font-style: italic; color: #4a5568; }
+    </style>
+</head>
+<body>
+    <h1>智慧会计助手</h1>
+    <div class="subtitle">智慧会计助手 · XX资本集团</div>
+
+    <div class="api-config">
+        <div class="config-row">
+            <label for="api-url">API地址：</label>
+            <input type="text" id="api-url" placeholder="http://localhost:5001" style="font-family: sans-serif;">
+        </div>
+        <div class="config-row">
+            <label for="server-public-key">API 密钥：</label>
+            <textarea id="server-public-key" placeholder=""></textarea>
+        </div>
+        <div class="config-row">
+            <button id="save-api-btn">保存并测试连接</button>
+        </div>
+        <div class="config-status">
+            当前API地址：<span id="current-config-url">未配置</span><br>
+            公钥状态：<span id="current-config-key" style="color: red;">未配置</span>
+        </div>
+    </div>
+
+    <div id="chat-container"></div>
+    <button id="clear-btn" class="clear-btn">清除对话</button>
+
+    <div id="file-info"></div>
+
+    <div id="input-container">
+        <input type="file" id="file-input" accept=".txt">
+        <button id="upload-btn">上传文件</button>
+        <input type="text" id="user-input" placeholder="输入你的问题 (可先上传文件作为上下文)...">
+        <button id="submit-btn">发送</button>
+    </div>
+
+    <div class="system-info">
+        <div class="api-status">
+            <span>API状态:</span>
+            <span id="api-status-indicator" class="status-indicator status-disconnected"></span>
+            <span id="api-status-text">未连接</span>
+        </div>
+    </div>
+
+    <script>
+        // --- START: RSA Hybrid Crypto Helper Functions ---
+        const cryptoUtils = {
+            encoder: new TextEncoder(),
+            decoder: new TextDecoder(),
+
+            pemToArrayBuffer(pem) {
+                const b64Lines = pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, '').trim();
+                const b64 = b64Lines.replace(/\s/g, '');
+                const binaryStr = atob(b64);
+                const len = binaryStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                return bytes.buffer;
+            },
+
+            async getRsaPublicKey(pem) {
+                const buffer = this.pemToArrayBuffer(pem);
+                return window.crypto.subtle.importKey(
+                    "spki", // SubjectPublicKeyInfo format
+                    buffer, {
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
+                    },
+                    false, // Not extractable
+                    ["encrypt"]
+                );
+            },
+
+            async hybridEncrypt(data, serverPublicKeyPem) {
+                const symmetricKey = await window.crypto.subtle.generateKey({
+                        name: "AES-GCM",
+                        length: 256
+                    },
+                    true, // Make it exportable to encrypt it
+                    ["encrypt", "decrypt"]
+                );
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const encodedData = this.encoder.encode(JSON.stringify(data));
+                const encryptedPayload = await window.crypto.subtle.encrypt({
+                    name: "AES-GCM",
+                    iv
+                }, symmetricKey, encodedData);
+                const fullPayloadMessage = new Uint8Array(iv.length + encryptedPayload.byteLength);
+                fullPayloadMessage.set(iv);
+                fullPayloadMessage.set(new Uint8Array(encryptedPayload), iv.length);
+
+                const rsaPublicKey = await this.getRsaPublicKey(serverPublicKeyPem);
+                const exportedSymKeyRaw = await window.crypto.subtle.exportKey("raw", symmetricKey);
+                const encryptedSymmetricKey = await window.crypto.subtle.encrypt({
+                    name: "RSA-OAEP"
+                }, rsaPublicKey, exportedSymKeyRaw);
+
+                return {
+                    encrypted_key: this.toBase64(encryptedSymmetricKey),
+                    payload: this.toBase64(fullPayloadMessage),
+                    symmetricKey: symmetricKey
+                };
+            },
+
+            async symmetricDecrypt(base64Ciphertext, symmetricKey) {
+                const fullMessage = this.fromBase64(base64Ciphertext);
+                const iv = fullMessage.slice(0, 12);
+                const ciphertext = fullMessage.slice(12);
+
+                const decrypted = await window.crypto.subtle.decrypt({
+                    name: "AES-GCM",
+                    iv
+                }, symmetricKey, ciphertext);
+
+                return JSON.parse(this.decoder.decode(decrypted));
+            },
+
+            toBase64(buffer) {
+                return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
+            },
+
+            fromBase64(base64) {
+                const binStr = atob(base64);
+                const len = binStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binStr.charCodeAt(i);
+                }
+                return bytes;
+            }
+        };
+        // --- END: Crypto Helper Functions ---
+
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const apiStatusIndicator = document.getElementById('api-status-indicator');
+        const apiStatusText = document.getElementById('api-status-text');
+        const apiUrlInput = document.getElementById('api-url');
+        const serverPublicKeyTextarea = document.getElementById('server-public-key');
+        const saveApiBtn = document.getElementById('save-api-btn');
+        const currentConfigUrlSpan = document.getElementById('current-config-url');
+        const currentConfigKeySpan = document.getElementById('current-config-key');
+
+        // New file input elements
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+
+        let API_BASE_URL = '';
+        let SERVER_PUBLIC_KEY = '';
+        let isGenerating = false;
+        let uploadedFileContent = '';
+
+        function loadApiConfig() {
+            const savedUrl = localStorage.getItem('api_base_url');
+            const savedKey = localStorage.getItem('server_public_key');
+
+            if (savedUrl) {
+                API_BASE_URL = savedUrl;
+                apiUrlInput.value = savedUrl;
+                currentConfigUrlSpan.textContent = savedUrl;
+            } else {
+                currentConfigUrlSpan.textContent = '未配置';
+            }
+
+            if (savedKey) {
+                SERVER_PUBLIC_KEY = savedKey;
+                serverPublicKeyTextarea.value = savedKey;
+                currentConfigKeySpan.textContent = '已配置';
+                currentConfigKeySpan.style.color = 'green';
+            } else {
+                currentConfigKeySpan.textContent = '未配置';
+                currentConfigKeySpan.style.color = 'red';
+            }
+            return savedUrl && savedKey;
+        }
+
+        function saveApiConfig(url, key) {
+            if (url) {
+                API_BASE_URL = url;
+                localStorage.setItem('api_base_url', url);
+                apiUrlInput.value = url;
+                currentConfigUrlSpan.textContent = url;
+            }
+            if (key) {
+                SERVER_PUBLIC_KEY = key;
+                localStorage.setItem('server_public_key', key);
+                serverPublicKeyTextarea.value = key;
+                currentConfigKeySpan.textContent = '已配置';
+                currentConfigKeySpan.style.color = 'green';
+            }
+        }
+
+        window.onload = function() {
+            addMessage("你好！我是智慧会计助手，有什么可以帮您的吗？您可以上传TXT文件作为对话上下文。", false);
+            if (loadApiConfig()) {
+                checkApiStatus();
+            }
+        };
+
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (!userMessage && !uploadedFileContent) {
+                showError('请输入消息或上传文件。');
+                return;
+            }
+            if (isGenerating) return;
+            if (!API_BASE_URL) {
+                showError('请先配置并保存API地址');
+                return;
+            }
+            if (!SERVER_PUBLIC_KEY) {
+                showError('请先配置并保存服务器公钥');
+                return;
+            }
+
+            const isConnected = await checkApiStatus();
+            if (!isConnected) {
+                showError('无法连接到API服务，请检查地址或服务是否启动');
+                return;
+            }
+
+            isGenerating = true;
+            submitBtn.disabled = true;
+            uploadBtn.disabled = true;
+            userInput.value = '';
+
+            let fullMessage = userMessage;
+            if (uploadedFileContent) {
+                const fileContext = `--- 上传的文件内容 ---\n${uploadedFileContent}\n--- 文件内容结束 ---`;
+                fullMessage = `${fileContext}\n\n${userMessage}`;
+                addMessage(`已将文件 "${fileInfo.textContent.replace('已上传: ', '').replace(' [移除]', '')}" 的内容作为上下文发送。`, false, null,
+                    "system");
+            }
+
+            addMessage(fullMessage, true);
+
+            // Clear file content after using it
+            uploadedFileContent = '';
+            fileInfo.innerHTML = '';
+
+            const assistantMessageId = `msg-${Date.now()}`;
+            const assistantMessageEl = addMessage('...', false, assistantMessageId);
+
+            // 固定使用流式传输
+            const mode = 'stream';
+
+            try {
+                const requestBody = {
+                    text: fullMessage,
+                    max_tokens: 8000,
+                    temperature: 0.7
+                };
+                const {
+                    encrypted_key,
+                    payload,
+                    symmetricKey
+                } = await cryptoUtils.hybridEncrypt(requestBody, SERVER_PUBLIC_KEY);
+                const finalPayload = {
+                    encrypted_key,
+                    payload
+                };
+
+                if (mode === 'stream') {
+                    await handleStreamRequest(finalPayload, symmetricKey, assistantMessageEl);
+                } else {
+                    await handleNonStreamRequest(finalPayload, symmetricKey, assistantMessageEl);
+                }
+            } catch (error) {
+                console.error('请求出错:', error);
+                const errorMsg = `加密或请求失败: ${error.message}. 检查公钥格式和API连接.`;
+                assistantMessageEl.textContent = errorMsg;
+                showError(errorMsg);
+            } finally {
+                isGenerating = false;
+                submitBtn.disabled = false;
+                uploadBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        async function handleNonStreamRequest(payload, symmetricKey, messageElement) {
+            const response = await fetch(`${API_BASE_URL}/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`服务器错误: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+
+            const encryptedResponse = await response.json();
+            const data = await cryptoUtils.symmetricDecrypt(encryptedResponse.payload, symmetricKey);
+            renderThinkingAndResponse(messageElement, data.generated_text);
+        }
+
+        async function handleStreamRequest(payload, symmetricKey, messageElement) {
+            const response = await fetch(`${API_BASE_URL}/generate-stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`服务器错误: ${response.status} ${response.statusText}`);
+            if (!response.body) throw new Error('未接收到响应体');
+
+            messageElement.innerHTML = '...';
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const {
+                    value,
+                    done
+                } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, {
+                    stream: true
+                });
+                let eventEnd;
+                while ((eventEnd = buffer.indexOf('\n\n')) !== -1) {
+                    const eventData = buffer.slice(0, eventEnd);
+                    buffer = buffer.slice(eventEnd + 2);
+
+                    if (eventData.startsWith('data: ')) {
+                        try {
+                            const encryptedChunk = JSON.parse(eventData.replace('data: ', ''));
+                            if (encryptedChunk.payload) {
+                                const chunk = await cryptoUtils.symmetricDecrypt(encryptedChunk.payload, symmetricKey);
+                                if (chunk.generated_text) {
+                                    fullText += chunk.generated_text;
+                                    renderThinkingAndResponse(messageElement, fullText);
+                                }
+                                if (chunk.error) {
+                                    showError(`Stream error: ${chunk.error}`);
+                                    return;
+                                }
+                                if (chunk.is_end) return;
+                            }
+                        } catch (e) {
+                            console.error('解析或解密流数据错误:', e);
+                        }
+                    }
+                }
+            }
+        }
+
+        saveApiBtn.addEventListener('click', async function() {
+            const url = apiUrlInput.value.trim();
+            const key = serverPublicKeyTextarea.value.trim();
+            if (!url) {
+                showError('请输入有效的API地址');
+                return;
+            }
+            if (!key || !key.includes('-----BEGIN PUBLIC KEY-----')) {
+                showError('请输入有效的PEM格式公钥');
+                return;
+            }
+            saveApiConfig(url, key);
+            const isConnected = await checkApiStatus();
+            if (isConnected) {
+                addMessage("API连接测试成功！服务正常运行。", false);
+            } else {
+                showError('API连接测试失败，请检查地址或服务状态');
+            }
+        });
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'text/plain') {
+                showError('请只上传 .txt 格式的文件。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedFileContent = e.target.result;
+                fileInfo.innerHTML = `已上传: ${file.name} <span id="remove-file" title="移除文件"> [移除]</span>`;
+                document.getElementById('remove-file').addEventListener('click', () => {
+                    uploadedFileContent = '';
+                    fileInfo.innerHTML = '';
+                    fileInput.value = ''; // Reset file input
+                });
+            };
+            reader.onerror = () => {
+                showError('读取文件时发生错误。');
+                uploadedFileContent = '';
+            };
+            reader.readAsText(file);
+        });
+
+        function addMessage(text, isUser = false, messageId = null, type = "normal") {
+            const container = document.createElement('div');
+            if (type === "system") {
+                const systemMsg = document.createElement('div');
+                systemMsg.style.textAlign = 'center';
+                systemMsg.style.fontSize = '0.8em';
+                systemMsg.style.color = '#718096';
+                systemMsg.style.margin = '10px 0';
+                systemMsg.textContent = text;
+                chatContainer.appendChild(systemMsg);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return systemMsg;
+            }
+            container.className = `message-container ${isUser ? 'user-message-container' : 'assistant-message-container'}`;
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${isUser ? 'user-avatar' : 'assistant-avatar'}`;
+            avatar.textContent = isUser ? 'U' : 'AI';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'user-message' : 'assistant-message';
+            if (messageId) messageDiv.id = messageId;
+            messageDiv.textContent = text;
+            wrapper.appendChild(messageDiv);
+            const timestamp = document.createElement('div');
+            timestamp.className = 'message-timestamp';
+            const now = new Date();
+            timestamp.textContent =
+                `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            wrapper.appendChild(timestamp);
+            if (isUser) {
+                container.appendChild(wrapper);
+                container.appendChild(avatar);
+            } else {
+                container.appendChild(avatar);
+                container.appendChild(wrapper);
+            }
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateApiStatus(status) {
+            apiStatusIndicator.classList.remove('status-connected', 'status-disconnected');
+            if (status === 'connected') {
+                apiStatusIndicator.classList.add('status-connected');
+                apiStatusText.textContent = '已连接';
+                apiStatusText.style.color = '#38a169';
+            } else {
+                apiStatusIndicator.classList.add('status-disconnected');
+                apiStatusText.textContent = '未连接';
+                apiStatusText.style.color = '#e53e3e';
+            }
+        }
+        async function checkApiStatus() {
+            if (!API_BASE_URL) {
+                updateApiStatus('disconnected');
+                return false;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok && (await response.json()).status === 'healthy') {
+                    updateApiStatus('connected');
+                    return true;
+                }
+                updateApiStatus('disconnected');
+                return false;
+            } catch (error) {
+                updateApiStatus('disconnected');
+                return false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `错误: ${message}`;
+            chatContainer.appendChild(errorDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function renderThinkingAndResponse(element, fullText) {
+            const thinkRegex = /<think>(.*?)<\/think>/s;
+            const thinkMatch = fullText.match(thinkRegex);
+            let thinkingContent = '';
+            let responseContent = fullText;
+            if (thinkMatch) {
+                thinkingContent = thinkMatch[1].trim();
+                responseContent = fullText.replace(thinkRegex, '').trim();
+            }
+            let html = '';
+            if (thinkingContent) {
+                const sanitizedThinking = thinkingContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<div class="thinking-block">${sanitizedThinking}</div>`;
+            }
+            if (responseContent || thinkingContent) {
+                const sanitizedResponse = responseContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<div class="response-block">${sanitizedResponse || '...'}</div>`;
+            } else {
+                html = '...';
+            }
+            element.innerHTML = html;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        clearBtn.addEventListener('click', function() {
+            if (!isGenerating) {
+                chatContainer.innerHTML = '';
+                uploadedFileContent = '';
+                fileInfo.innerHTML = '';
+                fileInput.value = '';
+                addMessage("对话已清除。有什么新问题吗？", false);
+            }
+        });
+        submitBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        userInput.focus();
+    </script>
+</body>
+</html>

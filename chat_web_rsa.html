@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>智慧会计助手 - 安全聊天界面</title>
+    <style>
+        /* ===== 核心变量定义（仅修改样式，不改动HTML/JS） ===== */
+        :root {
+            --primary-dark: #0f172a;
+            --primary-blue: #1e3a8a;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --bg-main: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-chat: #1e293b;
+            --bg-user-msg: linear-gradient(135deg, #06b6d4, #0891b2);
+            --bg-assistant-msg: #334155;
+            --border-color: #334155;
+            --shadow: 0 4px 12px rgba(0,0,0,0.2);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ===== 全局样式重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== 启动动画样式（修复遮挡问题）===== */
+        .splash-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-blue));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+            pointer-events: none; /* 关键修复：不阻挡点击事件 */
+        }
+        
+        .splash-logo {
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 1.5rem;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .splash-text {
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 300;
+            letter-spacing: 3px;
+            animation: fadeIn 1s ease-in 0.5s both;
+        }
+        
+        .splash-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            animation: fadeIn 1s ease-in 1s both;
+        }
+        
+        .splash-loader {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 1.5rem;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== 主应用容器 ===== */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+            min-height: 0; /* 允许flex子项收缩 */
+        }
+        
+        .app-container.loaded {
+            opacity: 1;
+        }
+
+        /* ===== 顶部标题区域 ===== */
+        .header-title {
+            text-align: center;
+            padding: 1.5rem 0 0.75rem;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            color: var(--text-primary);
+            font-size: 1.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        /* ===== API配置区域 ===== */
+        .api-config {
+            background: var(--bg-surface);
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        /* Toggle button for API config */
+        #toggle-config-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.35rem 0.6rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: var(--transition);
+        }
+
+        #toggle-config-btn:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(6,182,212,0.12);
+        }
+
+        /* Hidden state for api-config with smooth collapse */
+        .api-config {
+            max-height: 1200px;
+            overflow: hidden;
+            transition: max-height 0.32s ease, opacity 0.28s ease, padding 0.28s ease;
+        }
+
+        .api-config.hidden {
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            opacity: 0;
+            border-bottom: none;
+        }
+        
+        .config-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .api-config label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            width: 80px;
+            text-align: right;
+            padding-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .api-config input, .api-config textarea {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            flex: 1;
+            font-family: inherit;
+        }
+        
+        .api-config input:focus, .api-config textarea:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+        }
+        
+        .api-config textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .api-config button {
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            margin-left: 88px;
+            align-self: flex-start;
+        }
+        
+        .api-config button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(6, 182, 212, 0.3);
+        }
+        
+        .config-status {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-left: 88px;
+            line-height: 1.5;
+        }
+
+        /* ===== 聊天容器（修复滚动问题）===== */
+        .chat-wrapper {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto !important; /* 强制启用滚动 */
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            min-height: 0; /* 允许flex子项收缩 */
+        }
+        
+        #chat-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding-bottom: 2rem;
+        }
+
+        /* ===== 消息样式 ===== */
+        .message-container {
+            display: flex;
+            margin-bottom: 1.25rem;
+            animation: messageFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes messageFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message-container {
+            justify-content: flex-end;
+        }
+        
+        .assistant-message-container {
+            justify-content: flex-start;
+        }
+        
+        .message-wrapper {
+            max-width: 85%;
+            flex: 1;
+        }
+        
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+        }
+        
+        .user-avatar {
+            background: var(--bg-user-msg);
+            color: white;
+            margin-left: 0.75rem;
+            box-shadow: 0 2px 6px rgba(6, 182, 212, 0.3);
+        }
+        
+        .assistant-avatar {
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+            color: white;
+            margin-right: 0.75rem;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+        
+        .user-message {
+            background: var(--bg-user-msg);
+            color: white;
+            padding: 0.875rem 1rem;
+            border-radius: 16px 16px 4px 16px;
+            box-shadow: var(--shadow);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .assistant-message {
+            background: var(--bg-assistant-msg);
+            padding: 0.875rem 1rem;
+            border-radius: 16px 16px 16px 4px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .thinking-block {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px dashed var(--accent-cyan);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .thinking-block:before {
+            content: "Thinking...";
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.25rem;
+            color: var(--accent-cyan);
+        }
+        
+        .response-block {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .message-timestamp {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== 底部组合输入区 ===== */
+        .bottom-input-area {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .input-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .file-upload-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        #upload-btn {
+            background: var(--border-color);
+            color: var(--text-primary);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        
+        #upload-btn:hover:not(:disabled) {
+            background: var(--accent-cyan);
+            transform: translateY(-1px);
+        }
+        
+        #file-info {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        #user-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            min-height: 44px;
+            max-height: 120px;
+            resize: vertical;
+            outline: none;
+        }
+        
+        #user-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+        }
+        
+        #submit-btn {
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+            color: white;
+            border: none;
+            padding: 0 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition);
+            white-space: nowrap;
+            height: 44px;
+        }
+        
+        #submit-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(6, 182, 212, 0.3);
+        }
+
+        /* ===== 系统信息 ===== */
+        .system-info {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        /* ===== 自定义滚动条 ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+
+        /* ===== 响应式设计 ===== */
+        @media (max-width: 768px) {
+            .config-row {
+                flex-wrap: wrap;
+            }
+            .api-config label {
+                width: 100%;
+                text-align: left;
+                padding-top: 0;
+                margin-bottom: 0.25rem;
+            }
+            .api-config button {
+                margin-left: 0;
+                width: 100%;
+            }
+            .config-status {
+                margin-left: 0;
+            }
+            .file-upload-section {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 启动动画 -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-logo">AI</div>
+        <div class="splash-text">智慧会计助手</div>
+        <div class="splash-subtitle">XX资本集团 · 财务智能处理系统</div>
+        <div class="splash-loader"></div>
+    </div>
+
+    <!-- 主应用容器 -->
+    <div class="app-container" id="appContainer">
+        <!-- 顶部标题 -->
+        <div class="header-title">
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                <h1>智慧会计助手</h1>
+                <button id="toggle-config-btn" title="显示/隐藏 API 配置" aria-expanded="true">隐藏配置</button>
+            </div>
+            <div class="subtitle">智慧会计助手 · XX资本集团</div>
+        </div>
+
+        <!-- API配置区域 -->
+        <div class="api-config">
+            <div class="config-row">
+                <label for="api-url">API地址：</label>
+                <input type="text" id="api-url" placeholder="http://localhost:5001">
+            </div>
+            <div class="config-row">
+                <label for="server-public-key">API 密钥：</label>
+                <textarea id="server-public-key" placeholder="请输入PEM格式公钥"></textarea>
+            </div>
+            <div class="config-row">
+                <button id="save-api-btn">保存并测试连接</button>
+            </div>
+            <div class="config-status">
+                当前API地址：<span id="current-config-url">未配置</span><br>
+                公钥状态：<span id="current-config-key" style="color: var(--accent-red);">未配置</span>
+            </div>
+        </div>
+
+        <!-- 聊天区域 -->
+        <div class="chat-wrapper">
+            <div id="chat-container"></div>
+        </div>
+
+        <!-- 底部组合输入区 -->
+        <div class="bottom-input-area">
+            <div class="input-container">
+                <div class="file-upload-section">
+                    <input type="file" id="file-input" accept=".txt">
+                    <button id="upload-btn">📁 上传文件</button>
+                    <div id="file-info"></div>
+                    <button id="clear-btn" class="clear-btn">🗑️ 清除对话</button>
+                </div>
+                
+                <div class="message-input-section">
+                    <textarea id="user-input" placeholder="输入财务问题，或先上传文件作为上下文..."></textarea>
+                    <button id="submit-btn">发送</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统状态信息 -->
+        <div class="system-info">
+            <div class="api-status">
+                <span>API状态:</span>
+                <span id="api-status-indicator" class="status-indicator status-disconnected"></span>
+                <span id="api-status-text">未连接</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 原JavaScript代码（保持不变） -->
+    <script>
+        // --- START: RSA Hybrid Crypto Helper Functions ---
+        const cryptoUtils = {
+            encoder: new TextEncoder(),
+            decoder: new TextDecoder(),
+
+            pemToArrayBuffer(pem) {
+                const b64Lines = pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, '').trim();
+                const b64 = b64Lines.replace(/\s/g, '');
+                const binaryStr = atob(b64);
+                const len = binaryStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                return bytes.buffer;
+            },
+
+            async getRsaPublicKey(pem) {
+                const buffer = this.pemToArrayBuffer(pem);
+                return window.crypto.subtle.importKey(
+                    "spki", // SubjectPublicKeyInfo format
+                    buffer, {
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
+                    },
+                    false, // Not extractable
+                    ["encrypt"]
+                );
+            },
+
+            async hybridEncrypt(data, serverPublicKeyPem) {
+                const symmetricKey = await window.crypto.subtle.generateKey({
+                        name: "AES-GCM",
+                        length: 256
+                    },
+                    true, // Make it exportable to encrypt it
+                    ["encrypt", "decrypt"]
+                );
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const encodedData = this.encoder.encode(JSON.stringify(data));
+                const encryptedPayload = await window.crypto.subtle.encrypt({
+                    name: "AES-GCM",
+                    iv
+                }, symmetricKey, encodedData);
+                const fullPayloadMessage = new Uint8Array(iv.length + encryptedPayload.byteLength);
+                fullPayloadMessage.set(iv);
+                fullPayloadMessage.set(new Uint8Array(encryptedPayload), iv.length);
+
+                const rsaPublicKey = await this.getRsaPublicKey(serverPublicKeyPem);
+                const exportedSymKeyRaw = await window.crypto.subtle.exportKey("raw", symmetricKey);
+                const encryptedSymmetricKey = await window.crypto.subtle.encrypt({
+                    name: "RSA-OAEP"
+                }, rsaPublicKey, exportedSymKeyRaw);
+
+                return {
+                    encrypted_key: this.toBase64(encryptedSymmetricKey),
+                    payload: this.toBase64(fullPayloadMessage),
+                    symmetricKey: symmetricKey
+                };
+            },
+
+            async symmetricDecrypt(base64Ciphertext, symmetricKey) {
+                const fullMessage = this.fromBase64(base64Ciphertext);
+                const iv = fullMessage.slice(0, 12);
+                const ciphertext = fullMessage.slice(12);
+
+                const decrypted = await window.crypto.subtle.decrypt({
+                    name: "AES-GCM",
+                    iv
+                }, symmetricKey, ciphertext);
+
+                return JSON.parse(this.decoder.decode(decrypted));
+            },
+
+            toBase64(buffer) {
+                return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
+            },
+
+            fromBase64(base64) {
+                const binStr = atob(base64);
+                const len = binStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binStr.charCodeAt(i);
+                }
+                return bytes;
+            }
+        };
+        // --- END: Crypto Helper Functions ---
+
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const apiStatusIndicator = document.getElementById('api-status-indicator');
+        const apiStatusText = document.getElementById('api-status-text');
+        const apiUrlInput = document.getElementById('api-url');
+        const serverPublicKeyTextarea = document.getElementById('server-public-key');
+        const saveApiBtn = document.getElementById('save-api-btn');
+        const currentConfigUrlSpan = document.getElementById('current-config-url');
+        const currentConfigKeySpan = document.getElementById('current-config-key');
+
+        // New file input elements
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+
+        let API_BASE_URL = '';
+        let SERVER_PUBLIC_KEY = '';
+        let isGenerating = false;
+        let uploadedFileContent = '';
+
+        function loadApiConfig() {
+            const savedUrl = localStorage.getItem('api_base_url');
+            const savedKey = localStorage.getItem('server_public_key');
+
+            if (savedUrl) {
+                API_BASE_URL = savedUrl;
+                apiUrlInput.value = savedUrl;
+                currentConfigUrlSpan.textContent = savedUrl;
+            } else {
+                currentConfigUrlSpan.textContent = '未配置';
+            }
+
+            if (savedKey) {
+                SERVER_PUBLIC_KEY = savedKey;
+                serverPublicKeyTextarea.value = savedKey;
+                currentConfigKeySpan.textContent = '已配置';
+                currentConfigKeySpan.style.color = 'green';
+            } else {
+                currentConfigKeySpan.textContent = '未配置';
+                currentConfigKeySpan.style.color = 'red';
+            }
+            return savedUrl && savedKey;
+        }
+
+        function saveApiConfig(url, key) {
+            if (url) {
+                API_BASE_URL = url;
+                localStorage.setItem('api_base_url', url);
+                apiUrlInput.value = url;
+                currentConfigUrlSpan.textContent = url;
+            }
+            if (key) {
+                SERVER_PUBLIC_KEY = key;
+                localStorage.setItem('server_public_key', key);
+                serverPublicKeyTextarea.value = key;
+                currentConfigKeySpan.textContent = '已配置';
+                currentConfigKeySpan.style.color = 'green';
+            }
+        }
+
+        window.onload = async function() {
+            addMessage("你好！我是智慧会计助手，有什么可以帮您的吗？您可以上传TXT文件作为对话上下文。", false);
+            const hasConfig = loadApiConfig();
+            if (hasConfig) {
+                // 尝试检查 API 状态，但不阻塞启动动画
+                checkApiStatus().catch(() => {});
+            }
+            const splash = document.getElementById('splashScreen');
+            const app = document.getElementById('appContainer');
+            setTimeout(() => {
+                try {
+                    splash.style.opacity = '0';
+                    splash.style.pointerEvents = 'none';
+                    // 等待过渡结束后移除元素以释放层叠上下文
+                    splash.addEventListener('transitionend', () => {
+                        if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+                    });
+                } catch (e) {
+                    // ignore
+                }
+                app.classList.add('loaded');
+            }, 600);
+        };
+
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (!userMessage && !uploadedFileContent) {
+                showError('请输入消息或上传文件。');
+                return;
+            }
+            if (isGenerating) return;
+            if (!API_BASE_URL) {
+                showError('请先配置并保存API地址');
+                return;
+            }
+            if (!SERVER_PUBLIC_KEY) {
+                showError('请先配置并保存服务器公钥');
+                return;
+            }
+
+            const isConnected = await checkApiStatus();
+            if (!isConnected) {
+                showError('无法连接到API服务，请检查地址或服务是否启动');
+                return;
+            }
+
+            isGenerating = true;
+            submitBtn.disabled = true;
+            uploadBtn.disabled = true;
+            userInput.value = '';
+
+            let fullMessage = userMessage;
+            if (uploadedFileContent) {
+                const fileContext = `--- 上传的文件内容 ---\n${uploadedFileContent}\n--- 文件内容结束 ---`;
+                fullMessage = `${fileContext}\n\n${userMessage}`;
+                addMessage(`已将文件 "${fileInfo.textContent.replace('已上传: ', '').replace(' [移除]', '')}" 的内容作为上下文发送。`, false, null,
+                    "system");
+            }
+
+            addMessage(fullMessage, true);
+
+            // Clear file content after using it
+            uploadedFileContent = '';
+            fileInfo.innerHTML = '';
+
+            const assistantMessageId = `msg-${Date.now()}`;
+            const assistantMessageEl = addMessage('...', false, assistantMessageId);
+
+            // 固定使用流式传输
+            const mode = 'stream';
+
+            try {
+                const requestBody = {
+                    text: fullMessage,
+                    max_tokens: 8000,
+                    temperature: 0.7
+                };
+                const {
+                    encrypted_key,
+                    payload,
+                    symmetricKey
+                } = await cryptoUtils.hybridEncrypt(requestBody, SERVER_PUBLIC_KEY);
+                const finalPayload = {
+                    encrypted_key,
+                    payload
+                };
+
+                if (mode === 'stream') {
+                    await handleStreamRequest(finalPayload, symmetricKey, assistantMessageEl);
+                } else {
+                    await handleNonStreamRequest(finalPayload, symmetricKey, assistantMessageEl);
+                }
+            } catch (error) {
+                console.error('请求出错:', error);
+                const errorMsg = `加密或请求失败: ${error.message}. 检查公钥格式和API连接.`;
+                assistantMessageEl.textContent = errorMsg;
+                showError(errorMsg);
+            } finally {
+                isGenerating = false;
+                submitBtn.disabled = false;
+                uploadBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        async function handleNonStreamRequest(payload, symmetricKey, messageElement) {
+            const response = await fetch(`${API_BASE_URL}/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`服务器错误: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+
+            const encryptedResponse = await response.json();
+            const data = await cryptoUtils.symmetricDecrypt(encryptedResponse.payload, symmetricKey);
+            renderThinkingAndResponse(messageElement, data.generated_text);
+        }
+
+        async function handleStreamRequest(payload, symmetricKey, messageElement) {
+            const response = await fetch(`${API_BASE_URL}/generate-stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`服务器错误: ${response.status} ${response.statusText}`);
+            if (!response.body) throw new Error('未接收到响应体');
+
+            messageElement.innerHTML = '...';
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const {
+                    value,
+                    done
+                } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, {
+                    stream: true
+                });
+                let eventEnd;
+                while ((eventEnd = buffer.indexOf('\n\n')) !== -1) {
+                    const eventData = buffer.slice(0, eventEnd);
+                    buffer = buffer.slice(eventEnd + 2);
+
+                    if (eventData.startsWith('data: ')) {
+                        try {
+                            const encryptedChunk = JSON.parse(eventData.replace('data: ', ''));
+                            if (encryptedChunk.payload) {
+                                const chunk = await cryptoUtils.symmetricDecrypt(encryptedChunk.payload, symmetricKey);
+                                if (chunk.generated_text) {
+                                    fullText += chunk.generated_text;
+                                    renderThinkingAndResponse(messageElement, fullText);
+                                }
+                                if (chunk.error) {
+                                    showError(`Stream error: ${chunk.error}`);
+                                    return;
+                                }
+                                if (chunk.is_end) return;
+                            }
+                        } catch (e) {
+                            console.error('解析或解密流数据错误:', e);
+                        }
+                    }
+                }
+            }
+        }
+
+        saveApiBtn.addEventListener('click', async function() {
+            const url = apiUrlInput.value.trim();
+            const key = serverPublicKeyTextarea.value.trim();
+            if (!url) {
+                showError('请输入有效的API地址');
+                return;
+            }
+            if (!key || !key.includes('-----BEGIN PUBLIC KEY-----')) {
+                showError('请输入有效的PEM格式公钥');
+                return;
+            }
+            saveApiConfig(url, key);
+            const isConnected = await checkApiStatus();
+            if (isConnected) {
+                addMessage("API连接测试成功！服务正常运行。", false);
+            } else {
+                showError('API连接测试失败，请检查地址或服务状态');
+            }
+        });
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'text/plain') {
+                showError('请只上传 .txt 格式的文件。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedFileContent = e.target.result;
+                fileInfo.innerHTML = `已上传: ${file.name} <span id="remove-file" title="移除文件"> [移除]</span>`;
+                document.getElementById('remove-file').addEventListener('click', () => {
+                    uploadedFileContent = '';
+                    fileInfo.innerHTML = '';
+                    fileInput.value = '';
+                });
+            };
+            reader.onerror = () => {
+                showError('读取文件时发生错误。');
+                uploadedFileContent = '';
+            };
+            reader.readAsText(file);
+        });
+
+        function addMessage(text, isUser = false, messageId = null, type = "normal") {
+            if (type === "system") {
+                const systemMsg = document.createElement('div');
+                systemMsg.style.textAlign = 'center';
+                systemMsg.style.fontSize = '0.8em';
+                systemMsg.style.color = 'var(--text-secondary)';
+                systemMsg.style.margin = '10px 0';
+                systemMsg.textContent = text;
+                chatContainer.appendChild(systemMsg);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return systemMsg;
+            }
+            const container = document.createElement('div');
+            container.className = `message-container ${isUser ? 'user-message-container' : 'assistant-message-container'}`;
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${isUser ? 'user-avatar' : 'assistant-avatar'}`;
+            avatar.textContent = isUser ? 'U' : 'AI';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'user-message' : 'assistant-message';
+            if (messageId) messageDiv.id = messageId;
+            messageDiv.textContent = text;
+            wrapper.appendChild(messageDiv);
+            const timestamp = document.createElement('div');
+            timestamp.className = 'message-timestamp';
+            const now = new Date();
+            timestamp.textContent = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            wrapper.appendChild(timestamp);
+            if (isUser) {
+                container.appendChild(wrapper);
+                container.appendChild(avatar);
+            } else {
+                container.appendChild(avatar);
+                container.appendChild(wrapper);
+            }
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateApiStatus(status) {
+            apiStatusIndicator.classList.remove('status-connected', 'status-disconnected');
+            if (status === 'connected') {
+                apiStatusIndicator.classList.add('status-connected');
+                apiStatusText.textContent = '已连接';
+            } else {
+                apiStatusIndicator.classList.add('status-disconnected');
+                apiStatusText.textContent = '未连接';
+            }
+        }
+
+        async function checkApiStatus() {
+            if (!API_BASE_URL) {
+                updateApiStatus('disconnected');
+                return false;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok && (await response.json()).status === 'healthy') {
+                    updateApiStatus('connected');
+                    return true;
+                }
+                updateApiStatus('disconnected');
+                return false;
+            } catch (error) {
+                updateApiStatus('disconnected');
+                return false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `错误: ${message}`;
+            chatContainer.appendChild(errorDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function renderThinkingAndResponse(element, fullText) {
+            const thinkRegex = /<think>(.*?)<\/think>/s;
+            const thinkMatch = fullText.match(thinkRegex);
+            let thinkingContent = '';
+            let responseContent = fullText;
+            if (thinkMatch) {
+                thinkingContent = thinkMatch[1].trim();
+                responseContent = fullText.replace(thinkRegex, '').trim();
+            }
+            let html = '';
+            if (thinkingContent) {
+                const sanitizedThinking = thinkingContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<div class="thinking-block">${sanitizedThinking}</div>`;
+            }
+            if (responseContent || thinkingContent) {
+                const sanitizedResponse = responseContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<div class="response-block">${sanitizedResponse || '...'}</div>`;
+            } else {
+                html = '...';
+            }
+            element.innerHTML = html;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        clearBtn.addEventListener('click', function() {
+            if (!isGenerating) {
+                chatContainer.innerHTML = '';
+                uploadedFileContent = '';
+                fileInfo.innerHTML = '';
+                fileInput.value = '';
+                addMessage("对话已清除。有什么新问题吗？", false);
+            }
+        });
+
+        submitBtn.addEventListener('click', sendMessage);
+        
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 页面加载完成后聚焦输入框
+        userInput.focus();
+
+        // ===== 添加 API 配置 显示/隐藏 切换和持久化 =====
+        (function() {
+            const apiConfigEl = document.querySelector('.api-config');
+            const toggleBtn = document.getElementById('toggle-config-btn');
+            if (!apiConfigEl || !toggleBtn) return;
+
+            function setApiConfigHidden(hidden, save = true) {
+                if (hidden) {
+                    apiConfigEl.classList.add('hidden');
+                    toggleBtn.textContent = '显示配置';
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                } else {
+                    apiConfigEl.classList.remove('hidden');
+                    toggleBtn.textContent = '隐藏配置';
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                }
+                if (save) localStorage.setItem('api_config_hidden', hidden ? '1' : '0');
+            }
+
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = apiConfigEl.classList.contains('hidden');
+                setApiConfigHidden(!isHidden);
+            });
+
+            // Initialize from saved preference
+            try {
+                const saved = localStorage.getItem('api_config_hidden');
+                if (saved === '1') setApiConfigHidden(true, false);
+            } catch (e) {
+                // ignore localStorage errors
+            }
+        })();
+    </script>
+</body>
+</html>
