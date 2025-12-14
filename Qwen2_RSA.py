@@ -253,7 +253,7 @@ async def generate_text_stream(encrypted_request: HybridEncryptedRequest, http_r
 
 # 启动服务
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5001)
+    uvicorn.run(app, host="0.0.0.0", port=5010)
 
 '''@misc{qwen3technicalreport,
       title={Qwen3 Technical Report}, 
